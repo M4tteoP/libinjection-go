@@ -37,7 +37,7 @@ const (
 type fnH5State func() bool
 
 type h5State struct {
-	s          string
+	s          *string
 	len        int
 	pos        int
 	isClose    bool

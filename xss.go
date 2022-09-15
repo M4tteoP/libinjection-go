@@ -2,7 +2,7 @@ package libinjection
 
 import "strings"
 
-func isXSS(input string, flags int) bool {
+func isXSS(input *string, flags int) bool {
 	var (
 		h5   = new(h5State)
 		attr = attributeTypeNone
@@ -88,11 +88,11 @@ func isXSS(input string, flags int) bool {
 
 // IsXSS returns true if the input string contains XSS
 func IsXSS(input string) bool {
-	if isXSS(input, html5FlagsDataState) ||
-		isXSS(input, html5FlagsValueNoQuote) ||
-		isXSS(input, html5FlagsValueSingleQuote) ||
-		isXSS(input, html5FlagsValueDoubleQuote) ||
-		isXSS(input, html5FlagsValueBackQuote) {
+	if isXSS(&input, html5FlagsDataState) ||
+		isXSS(&input, html5FlagsValueNoQuote) ||
+		isXSS(&input, html5FlagsValueSingleQuote) ||
+		isXSS(&input, html5FlagsValueDoubleQuote) ||
+		isXSS(&input, html5FlagsValueBackQuote) {
 		return true
 	}
 

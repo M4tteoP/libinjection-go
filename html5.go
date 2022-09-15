@@ -6,7 +6,7 @@ import (
 
 func (h *h5State) skipWhite() int {
 	for h.pos < h.len {
-		ch := h.s[h.pos]
+		ch := (*h.s)[h.pos]
 		switch ch {
 		case 0x00, 0x20, 0x09, 0x0A, 0x0B, 0x0C, 0x0D:
 			h.pos++
@@ -23,14 +23,14 @@ func (h *h5State) stateEOF() bool {
 
 // 12.2.4.44
 func (h *h5State) stateBogusComment() bool {
-	index := strings.IndexByte(h.s[h.pos:], byteGT)
+	index := strings.IndexByte((*h.s)[h.pos:], byteGT)
 	if index == -1 {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = h.len - h.pos
 		h.pos = h.len
 		h.state = h.stateEOF
 	} else {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = index
 		h.pos = h.pos + index + 1
 		h.state = h.stateData
@@ -44,9 +44,9 @@ func (h *h5State) stateBogusComment() bool {
 func (h *h5State) stateBogusComment2() bool {
 	pos := h.pos
 	for {
-		index := strings.IndexByte(h.s[pos:], bytePercent)
+		index := strings.IndexByte((*h.s)[pos:], bytePercent)
 		if index == -1 || pos+index+1 >= h.len {
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = h.len - h.pos
 			h.pos = h.len
 			h.tokenType = html5TypeTagComment
@@ -54,13 +54,13 @@ func (h *h5State) stateBogusComment2() bool {
 			return true
 		}
 
-		if h.s[h.pos+index+1] != byteGT {
+		if (*h.s)[h.pos+index+1] != byteGT {
 			pos = pos + index + 1
 			continue
 		}
 
 		// ends in %>
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = index
 		h.pos = pos + index + 2
 		h.state = h.stateData
@@ -83,12 +83,12 @@ func (h *h5State) stateComment() bool {
 	pos := h.pos
 
 	for {
-		index := strings.IndexByte(h.s[pos:], byteDash)
+		index := strings.IndexByte((*h.s)[pos:], byteDash)
 
 		// did not find anything or has less than 3 characters
 		if index == -1 || pos+index+3 > h.len {
 			h.state = h.stateEOF
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = h.len - h.pos
 			h.tokenType = html5TypeTagComment
 			return true
@@ -96,19 +96,19 @@ func (h *h5State) stateComment() bool {
 		offset := 1 // offset is set at the beginning of each iteration
 		posIndexOffset := pos + index + offset
 		// skip all nulls
-		for posIndexOffset < h.len && h.s[posIndexOffset] == 0x00 {
+		for posIndexOffset < h.len && (*h.s)[posIndexOffset] == 0x00 {
 			posIndexOffset++ //offset++
 		}
 
 		if posIndexOffset == h.len {
 			h.state = h.stateEOF
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = h.len - h.pos
 			h.tokenType = html5TypeTagComment
 			return true
 		}
 
-		ch := h.s[posIndexOffset]
+		ch := (*h.s)[posIndexOffset]
 		if ch != byteDash && ch != byteBang {
 			pos = pos + index + 1
 			// pos updated, but the next iteration starts and posIndexOffset is calculated again
@@ -118,13 +118,13 @@ func (h *h5State) stateComment() bool {
 
 		if posIndexOffset == h.len {
 			h.state = h.stateEOF
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = h.len - h.pos
 			h.tokenType = html5TypeTagComment
 			return true
 		}
 
-		if h.s[posIndexOffset] != byteGT {
+		if (*h.s)[posIndexOffset] != byteGT {
 			pos = pos + index + 1
 			// pos updated, but the next iteration starts and posIndexOffset is calculated again
 			continue
@@ -132,7 +132,7 @@ func (h *h5State) stateComment() bool {
 		posIndexOffset++ //offset++
 
 		// ends in --> or -!>
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = index + pos - h.pos
 		h.pos = posIndexOffset
 		h.state = h.stateData
@@ -145,19 +145,19 @@ func (h *h5State) stateCData() bool {
 	pos := h.pos
 
 	for {
-		index := strings.IndexByte(h.s[pos:], byteRightB)
+		index := strings.IndexByte((*h.s)[pos:], byteRightB)
 
 		// did not find anything or has less 3 chars left
 		switch {
 		case index == -1 || h.pos+index+3 > h.len:
 			h.state = h.stateEOF
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = h.len - h.pos
 			h.tokenType = html5TypeDataText
 			return true
-		case h.s[pos+index+1] == byteRightB && h.s[pos+index+2] == byteGT:
+		case (*h.s)[pos+index+1] == byteRightB && (*h.s)[pos+index+2] == byteGT:
 			h.state = h.stateData
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos + index - h.pos
 			h.pos = pos + index + 3
 			h.tokenType = html5TypeDataText
@@ -170,10 +170,10 @@ func (h *h5State) stateCData() bool {
 }
 
 func (h *h5State) stateDoctype() bool {
-	h.tokenStart = h.s[h.pos:]
+	h.tokenStart = (*h.s)[h.pos:]
 	h.tokenType = html5TypeDocType
 
-	index := strings.IndexByte(h.s[h.pos:], byteGT)
+	index := strings.IndexByte((*h.s)[h.pos:], byteGT)
 	if index == -1 {
 		h.state = h.stateEOF
 		h.tokenLen = h.len - h.pos
@@ -190,14 +190,14 @@ func (h *h5State) stateMarkupDeclarationOpen() bool {
 	remaining := h.len - h.pos
 	switch {
 	case remaining >= 7 &&
-		strings.ToLower(h.s[h.pos:h.pos+7]) == "doctype":
+		strings.ToLower((*h.s)[h.pos:h.pos+7]) == "doctype":
 		return h.stateDoctype()
 	case remaining >= 7 &&
-		h.s[h.pos:h.pos+7] == "[CDATA[":
+		(*h.s)[h.pos:h.pos+7] == "[CDATA[":
 		h.pos += 7
 		return h.stateCData()
 	case remaining >= 2 &&
-		h.s[h.pos:h.pos+2] == "--":
+		(*h.s)[h.pos:h.pos+2] == "--":
 		h.pos += 2
 		return h.stateComment()
 	}
@@ -210,9 +210,9 @@ func (h *h5State) stateSelfClosingStartTag() bool {
 		return false
 	}
 
-	ch := h.s[h.pos]
+	ch := (*h.s)[h.pos]
 	if ch == byteGT {
-		h.tokenStart = h.s[h.pos-1:]
+		h.tokenStart = (*h.s)[h.pos-1:]
 		h.tokenLen = 2
 		h.tokenType = html5TypeTagNameSelfClose
 		h.state = h.stateData
@@ -224,7 +224,7 @@ func (h *h5State) stateSelfClosingStartTag() bool {
 
 func (h *h5State) stateTagNameClose() bool {
 	h.isClose = false
-	h.tokenStart = h.s[h.pos:]
+	h.tokenStart = (*h.s)[h.pos:]
 	h.tokenLen = 1
 	h.tokenType = html5TypeTagNameClose
 	h.pos++
@@ -241,7 +241,7 @@ func (h *h5State) stateTagName() bool {
 	pos := h.pos
 
 	for pos < h.len {
-		ch := h.s[pos]
+		ch := (*h.s)[pos]
 		switch {
 
 		case ch == 0:
@@ -250,21 +250,21 @@ func (h *h5State) stateTagName() bool {
 			// some old browsers apparently allow and ignore them
 			pos++
 		case isH5White(ch):
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeTagNameOpen
 			h.pos = pos + 1
 			h.state = h.stateBeforeAttributeName
 			return true
 		case ch == byteSlash:
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeTagNameOpen
 			h.pos = pos + 1
 			h.state = h.stateSelfClosingStartTag
 			return true
 		case ch == byteGT:
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			if h.isClose {
 				h.pos = pos + 1
@@ -282,7 +282,7 @@ func (h *h5State) stateTagName() bool {
 		}
 	}
 
-	h.tokenStart = h.s[h.pos:]
+	h.tokenStart = (*h.s)[h.pos:]
 	h.tokenLen = h.len - h.pos
 	h.tokenType = html5TypeTagNameOpen
 	h.state = h.stateEOF
@@ -295,7 +295,7 @@ func (h *h5State) stateEndTagOpen() bool {
 		return false
 	}
 
-	ch := h.s[h.pos]
+	ch := (*h.s)[h.pos]
 	if ch == byteGT {
 		return h.stateData()
 	} else if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') {
@@ -311,7 +311,7 @@ func (h *h5State) stateTagOpen() bool {
 		return false
 	}
 
-	ch := h.s[h.pos]
+	ch := (*h.s)[h.pos]
 	switch {
 	case ch == byteBang:
 		h.pos++
@@ -339,7 +339,7 @@ func (h *h5State) stateTagOpen() bool {
 			return h.stateData()
 		}
 
-		h.tokenStart = h.s[h.pos-1:]
+		h.tokenStart = (*h.s)[h.pos-1:]
 		h.tokenLen = 1
 		h.tokenType = html5TypeDataText
 		h.state = h.stateData
@@ -348,9 +348,9 @@ func (h *h5State) stateTagOpen() bool {
 }
 
 func (h *h5State) stateData() bool {
-	index := strings.IndexByte(h.s[h.pos:], byteLT)
+	index := strings.IndexByte((*h.s)[h.pos:], byteLT)
 	if index == -1 {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = h.len - h.pos
 		h.tokenType = html5TypeDataText
 		h.state = h.stateEOF
@@ -359,7 +359,7 @@ func (h *h5State) stateData() bool {
 		}
 
 	} else {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenType = html5TypeDataText
 		h.tokenLen = index
 		h.pos = h.pos + index + 1
@@ -376,17 +376,17 @@ func (h *h5State) stateAttributeValueNoQuote() bool {
 	pos := h.pos
 
 	for pos < h.len {
-		ch := h.s[pos]
+		ch := (*h.s)[pos]
 		if isH5White(ch) {
 			h.tokenType = html5TypeAttrValue
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.pos = pos + 1
 			h.state = h.stateBeforeAttributeName
 			return true
 		} else if ch == byteGT {
 			h.tokenType = html5TypeAttrValue
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.pos = pos
 			h.state = h.stateTagNameClose
@@ -397,7 +397,7 @@ func (h *h5State) stateAttributeValueNoQuote() bool {
 	}
 
 	h.state = h.stateEOF
-	h.tokenStart = h.s[h.pos:]
+	h.tokenStart = (*h.s)[h.pos:]
 	h.tokenLen = h.len - h.pos
 	h.tokenType = html5TypeAttrValue
 	return true
@@ -452,31 +452,31 @@ func (h *h5State) stateAttributeName() bool {
 	pos := h.pos + 1
 
 	for pos < h.len {
-		ch := h.s[pos]
+		ch := (*h.s)[pos]
 		switch {
 		case isH5White(ch):
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeAttrName
 			h.state = h.stateAfterAttributeName
 			h.pos = pos + 1
 			return true
 		case ch == byteSlash:
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeAttrName
 			h.state = h.stateSelfClosingStartTag
 			h.pos = pos + 1
 			return true
 		case ch == byteEquals:
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeAttrName
 			h.state = h.stateBeforeAttributeValue
 			h.pos = pos + 1
 			return true
 		case ch == byteGT:
-			h.tokenStart = h.s[h.pos:]
+			h.tokenStart = (*h.s)[h.pos:]
 			h.tokenLen = pos - h.pos
 			h.tokenType = html5TypeAttrName
 			h.state = h.stateTagNameClose
@@ -488,7 +488,7 @@ func (h *h5State) stateAttributeName() bool {
 	}
 
 	// EOF
-	h.tokenStart = h.s[h.pos:]
+	h.tokenStart = (*h.s)[h.pos:]
 	h.tokenLen = h.len - h.pos
 	h.tokenType = html5TypeAttrName
 	h.state = h.stateEOF
@@ -508,7 +508,7 @@ func (h *h5State) stateBeforeAttributeName() bool {
 
 	case byteGT:
 		h.state = h.stateData
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = 1
 		h.tokenType = html5TypeTagNameClose
 		h.pos++
@@ -525,7 +525,7 @@ func (h *h5State) stateAfterAttributeValueQuotedState() bool {
 		return false
 	}
 
-	ch := h.s[h.pos]
+	ch := (*h.s)[h.pos]
 	switch {
 	case isH5White(ch):
 		h.pos++
@@ -534,7 +534,7 @@ func (h *h5State) stateAfterAttributeValueQuotedState() bool {
 		h.pos++
 		return h.stateSelfClosingStartTag()
 	case ch == byteGT:
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = 1
 		h.tokenType = html5TypeTagNameClose
 		h.pos++
@@ -554,14 +554,14 @@ func (h *h5State) stateAttributeValueQuote(ch byte) bool {
 		h.pos++
 	}
 
-	index := strings.IndexByte(h.s[h.pos:], ch)
+	index := strings.IndexByte((*h.s)[h.pos:], ch)
 	if index == -1 {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = h.len - h.pos
 		h.tokenType = html5TypeAttrValue
 		h.state = h.stateEOF
 	} else {
-		h.tokenStart = h.s[h.pos:]
+		h.tokenStart = (*h.s)[h.pos:]
 		h.tokenLen = index
 		h.tokenType = html5TypeAttrValue
 		h.state = h.stateAfterAttributeValueQuotedState
@@ -582,9 +582,9 @@ func (h *h5State) stateAttributeValueBackQuote() bool {
 	return h.stateAttributeValueQuote(byteTick)
 }
 
-func (h *h5State) init(input string, flags int) {
+func (h *h5State) init(input *string, flags int) {
 	h.s = input
-	h.len = len(input)
+	h.len = len(*input)
 
 	switch flags {
 	case html5FlagsDataState:

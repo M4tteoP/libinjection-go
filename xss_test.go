@@ -90,7 +90,8 @@ func runXSSTest(t testing.TB, data map[string]string, filename, flag string) {
 
 	case html5:
 		h5 := new(h5State)
-		h5.init(data["--INPUT--"], html5FlagsDataState)
+		input := data["--INPUT--"]
+		h5.init(&input, html5FlagsDataState)
 
 		for h5.next() {
 			actual += printHTML5Token(h5) + "\n"
