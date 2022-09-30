@@ -160,3 +160,15 @@ func BenchmarkXSSDriver(b *testing.B) {
 		}
 	})
 }
+
+var result int
+
+func BenchmarkIsXSS(b *testing.B) {
+	b.ReportAllocs()
+	var r int
+	for n := 0; n < b.N; n++ {
+		if IsXSS("<script>alert('1')</script>") {
+			r++
+		}
+	}
+}

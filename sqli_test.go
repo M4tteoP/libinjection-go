@@ -232,3 +232,10 @@ func BenchmarkSQLiDriver(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkIsSQLI(b *testing.B) {
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		IsSQLi("' OR '1")
+	}
+}
